@@ -2,11 +2,15 @@ Select database
 
 USE debs_eval;
 
+--------------------------------------------------------------------------------------
+
 Drop all tables
 
 DROP TABLE `to_evaluate`;
 DROP TABLE `evaluated`;
 DROP TABLE `participants`;
+
+--------------------------------------------------------------------------------------
 
 Create tables
 
@@ -16,18 +20,64 @@ CREATE TABLE `to_evaluate` (  `id` int(11) NOT NULL AUTO_INCREMENT,  `participan
 
 CREATE TABLE `evaluated` (  `id` int(11) NOT NULL AUTO_INCREMENT,  `participant_id` varchar(16) NOT NULL,  `duration` int(11) NOT NULL, `throughput` int(11) NOT NULL, `latency` int(11) NOT NULL, `log` text NOT NULL, PRIMARY KEY (`id`), FOREIGN KEY (`participant_id`) REFERENCES `participants` (`participant_id`)) ENGINE=InnoDB;
 
+--------------------------------------------------------------------------------------
+
 Add an user
 
 INSERT INTO participants (participant_id, mail) VALUES ('test_participant','test@gmail.com');
 INSERT INTO participants (participant_id, mail) VALUES ('participant2','abc@gmail.com');
 INSERT INTO participants (participant_id, mail) VALUES ('participant3','xyz@gmail.com');
 
+--------------------------------------------------------------------------------------
+
 Add evaluation to perform
 
 INSERT INTO to_evaluate (participant_id, vm_location, ts) VALUES ('participant3','www',NOW());
+
+--------------------------------------------------------------------------------------
 
 Add evaluated participant
 
 INSERT INTO evaluated (participant_id, duration, throughput, latency, log) VALUES ('participant3',1202,123243,12,'log log log log log log');
 
+--------------------------------------------------------------------------------------
+
 Select how many times a given participants has been evaluated
+
+SELECT participant_id,count(*) as count FROM evaluated GROUP BY participant_id;
+
+--------------------------------------------------------------------------------------
+
+Select the oldest submission to evaluate from each user
+
+SELECT participant_id,min(ts) as count FROM to_evaluate GROUP BY participant_id;
+
+--------------------------------------------------------------------------------------
+
+Select the oldest submission to evaluate from each user, add the number of times they have been evaluated already and sort on the latter
+
+SELECT A.participant_id,timestamp,evaluations
+FROM ( SELECT participant_id,min(ts) as timestamp FROM to_evaluate GROUP BY participant_id ) 
+as A
+join 
+( SELECT participant_id,count(*) as evaluations FROM evaluated GROUP BY participant_id ) 
+as B
+on A.participant_id=B.participant_id
+ORDER BY evaluations ASC;
+
+ABOUT THIS: tell people to not submit before getting an answer, otherwise you will still have to wait
+
+--------------------------------------------------------------------------------------
+
+Remove a participant from to_evaluate (and add to evaluated)
+
+DELETE FROM to_evaluate WHERE participant_id = 'test_participant' AND ts = '2015-10-03 18:43:36';
+INSERT INTO evaluated (participant_id, duration, throughput, latency, log) VALUES ('test_participant',1202,123243,12,'log log log log log log');
+
+--------------------------------------------------------------------------------------
+
+Select the oldest submission to evaluate from each user, add the number of times they have been evaluated already and sort on the latter (and write to file)
+
+SELECT A.participant_id,timestamp,evaluations FROM ( SELECT participant_id,min(ts) as timestamp FROM to_evaluate GROUP BY participant_id )  as A join  ( SELECT participant_id,count(*) as evaluations FROM evaluated GROUP BY participant_id )  as B on A.participant_id=B.participant_id ORDER BY evaluations ASC INTO OUTFILE '/tmp/result.txt';
+
+----------------------------------------------------------------------
